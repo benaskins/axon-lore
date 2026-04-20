@@ -1,45 +1,66 @@
 # axon-lore
 
-Architecture Decision Record (ADR) generation from scaffold specifications.
+Architecture Decision Record (ADR) writer. Plain-data, zero scaffolding-dialect dependencies.
 
 Import: `github.com/benaskins/axon-lore`
 
 ## What it does
 
-axon-lore writes ADRs to `docs/adr/` as numbered markdown files. It integrates with axon-snip's analysis pipeline to automatically document architectural decisions made during scaffolding: module selections, boundary classifications, constraints, and gap resolutions.
+axon-lore writes ADRs to `docs/adr/` as numbered markdown files. It exposes
+two surfaces:
+
+- A direct Go API (`Writer.Write`) for deterministic callers.
+- A `ToolDef` (`NewRecordDecisionTool`) for LLMs and callers that dispatch
+  through axon-tool.
+
+axon-lore knows nothing about PRDs, scaffolds, or modules. Callers shape their
+domain data into ADR fields and hand them over.
 
 ## Usage
 
-### From a scaffold spec
+### Direct
 
 ```go
 import "github.com/benaskins/axon-lore"
 
-writer := lore.NewWriter(projectDir)
-err := writer.WriteFromScaffold(spec)
-```
-
-This generates separate ADRs for each category of decision in the spec.
-
-### Manual ADR
-
-```go
-writer := lore.NewWriter(projectDir)
-err := writer.Write(lore.ADR{
-    Number: 1,
-    Title:  "Use event sourcing for audit trail",
-    Status: "accepted",
-    Context:    "...",
-    Decision:   "...",
-    Consequences: "...",
+w := lore.NewWriter(projectDir)
+err := w.Write(lore.ADR{
+    Title:        "Use SQLite for local storage",
+    Status:       "accepted",
+    Context:      "We need an embedded database with zero ops cost.",
+    Decision:     "Adopt SQLite with WAL journaling.",
+    Consequences: "No external DB; single-writer concurrency.",
+    Date:         "2026-04-20",
 })
 ```
 
-ADR numbers are auto-incremented by scanning existing files.
+ADR numbers auto-increment when `Number` is zero. Numbers are assigned by
+scanning existing files in the ADR directory.
+
+### Via tool dispatch
+
+```go
+import (
+    lore "github.com/benaskins/axon-lore"
+    tool "github.com/benaskins/axon-tool"
+)
+
+w := lore.NewWriter(projectDir)
+def := lore.NewRecordDecisionTool(w)
+
+// Callers (axon-loop, a direct dispatcher) invoke def.Execute with a map[string]any.
+res := def.Execute(&tool.ToolContext{}, map[string]any{
+    "title":    "Adopt event sourcing",
+    "status":   "accepted",
+    "context":  "Audit trail is a hard requirement.",
+    "decision": "Use event sourcing for state changes.",
+    "sources":  []any{"PRD §4", "spike notes"},
+})
+```
 
 ## Dependencies
 
-- axon-snip (for `analysis.ScaffoldSpec`)
+- `axon-tool` (for `ToolDef`)
 
 ## Build & Test
 

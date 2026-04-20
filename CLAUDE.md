@@ -2,13 +2,18 @@
 
 ## Conventions
 - ADRs are numbered markdown files in docs/adr/ with sanitised title slugs
-- WriteFromScaffold generates multiple ADRs from a single ScaffoldSpec
-- ADR numbers auto-increment by scanning existing files
+- Writer.Write assigns the next number when ADR.Number is zero
+- Optional sections (Date, Sources, Consequences) are omitted when empty
 
 ## Constraints
-- Depends on axon-snip only (for analysis.ScaffoldSpec); no other axon-* deps
-- ADR format follows the standard template: Status, Date, Sources, Context, Decision, Consequences
+- Plain data only: no knowledge of PRDs, scaffolds, or any caller domain
+- Zero dependency on axon-snip or any scaffolding-specific package
+- axon-tool is the only axon-* dependency (for ToolDef)
 - Do not add LLM calls; this package is entirely deterministic
+
+## Surfaces
+- `Writer.Write(ADR)` for direct/deterministic callers
+- `NewRecordDecisionTool(*Writer) *tool.ToolDef` for LLM or direct dispatch
 
 ## Testing
 - `go test ./...` runs all tests
